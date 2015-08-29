@@ -21,8 +21,32 @@ from manager_rest import celery_client
 
 class WorkflowClient(object):
 
-    @staticmethod
-    def execute_workflow(name,
+    def __init__(self):
+        ssl_enabled = False
+        verify_certificate = False
+        cloudify_username = None
+        cloudify_password = None
+        cfy_config = config.instance()
+
+        security_enabled = cfy_config.security_enabled
+        if security_enabled:
+            cloudify_username = cfy_config.security_admin_username
+            cloudify_password = cfy_config.security_admin_password
+            ssl_enabled = cfy_config.security_ssl.get('enabled', True)
+            if ssl_enabled:
+                verify_certificate = cfy_config.security_ssl.get(
+                    'verify_certificate', True)
+
+        self.security_context = {
+            'security_enabled': security_enabled,
+            'ssl_enabled': ssl_enabled,
+            'verify_ssl_certificate': verify_certificate,
+            'cloudify_username': cloudify_username,
+            'cloudify_password': cloudify_password
+        }
+
+    def execute_workflow(self,
+                         name,
                          workflow,
                          workflow_plugins,
                          blueprint_id,
@@ -44,6 +68,7 @@ class WorkflowClient(object):
             'blueprint_id': blueprint_id,
             'deployment_id': deployment_id,
             'execution_id': execution_id,
+            'security_ctx': self.security_context,
             'plugin': {
                 'name': plugin_name,
                 'package_name': plugin.get('package_name'),
@@ -68,6 +93,7 @@ class WorkflowClient(object):
             'task_target': task_queue,
             'execution_id': task_id,
             'workflow_id': wf_id,
+            'security_ctx': self.security_context
         }
 
         if deployment:

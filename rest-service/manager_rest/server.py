@@ -42,7 +42,6 @@ from manager_rest.constants import (MAINTENANCE_MODE_ACTIVE,
                                     ACTIVATING_MAINTENANCE_MODE,
                                     ACTIVATING_MAINTENANCE_MODE_ERROR_CODE)
 
-SECURITY_BYPASS_PORT = '8101'
 IMPLEMENTATION_KEY = 'implementation'
 PROPERTIES_KEY = 'properties'
 
@@ -290,10 +289,6 @@ def init_secured_app(_app):
             current_app.logger,
             hide_server_message=True)
 
-    def _is_internal_request(req):
-        server_port = req.headers.get('X-Server-Port')
-        return str(server_port) == SECURITY_BYPASS_PORT
-
     cfy_config = config.instance()
     if cfy_config.security_auth_token_generator:
         register_auth_token_generator(
@@ -320,7 +315,6 @@ def init_secured_app(_app):
             cfy_config.security_authorization_provider)
 
     secure_app.unauthorized_user_handler = unauthorized_user_handler
-    secure_app.skip_auth_hook = _is_internal_request
 
 
 def load_configuration():
