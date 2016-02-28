@@ -16,6 +16,7 @@
 
 from flask import current_app
 
+from manager_rest import config
 from manager_rest import celery_client
 
 
@@ -79,9 +80,8 @@ class WorkflowClient(object):
                             execution_id=execution_id,
                             execution_parameters=execution_parameters)
 
-    @staticmethod
-    def execute_system_workflow(wf_id, task_id, task_mapping, deployment=None,
-                                execution_parameters=None):
+    def execute_system_workflow(self, wf_id, task_id, task_mapping,
+                                deployment=None, execution_parameters=None):
         execution_parameters = execution_parameters or {}
         # task_id is not generated here since for system workflows,
         # the task id is equivalent to the execution id
