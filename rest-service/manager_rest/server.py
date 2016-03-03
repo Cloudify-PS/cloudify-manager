@@ -332,9 +332,8 @@ def load_configuration():
                     setattr(obj_conf, config_key, value)
                 else:
                     warnings.append(
-                        "Ignoring unknown key '{0}' in configuration"
-                        "file '{1}'"
-                        .format(key, os.environ[env_var_name]))
+                        "Ignoring unknown key '{0}' in configuration file "
+                        "'{1}'".format(key, os.environ[env_var_name]))
         return warnings
 
     warnings = load_config('MANAGER_REST_CONFIG_PATH')
