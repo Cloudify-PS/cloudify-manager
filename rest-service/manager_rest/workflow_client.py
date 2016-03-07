@@ -69,7 +69,7 @@ class WorkflowClient(object):
             'blueprint_id': blueprint_id,
             'deployment_id': deployment_id,
             'execution_id': execution_id,
-            'security_ctx': self.security_context,
+            'security_context': self.security_context,
             'plugin': {
                 'name': plugin_name,
                 'package_name': plugin.get('package_name'),
@@ -93,7 +93,7 @@ class WorkflowClient(object):
             'task_target': task_queue,
             'execution_id': task_id,
             'workflow_id': wf_id,
-            'security_ctx': self.security_context
+            'security_context': self.security_context
         }
 
         if deployment:
