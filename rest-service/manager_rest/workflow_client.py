@@ -20,30 +20,38 @@ from manager_rest import config
 from manager_rest import celery_client
 
 
+DEFAULT_MANAGER_PORT = 80
+SECURED_MANAGER_PORT = 443
+DEFAULT_MANAGER_PROTOCOL = 'http'
+SECURED_MANAGER_PROTOCOL = 'https'
+
+
 class WorkflowClient(object):
 
     def __init__(self):
-        ssl_enabled = False
-        verify_certificate = False
+        cfy_config = config.instance()
         cloudify_username = None
         cloudify_password = None
-        cfy_config = config.instance()
-
+        verify_certificate = False
+        manager_port = DEFAULT_MANAGER_PORT
+        manager_protocol = DEFAULT_MANAGER_PROTOCOL
         security_enabled = cfy_config.security_enabled
         if security_enabled:
             cloudify_username = cfy_config.security_admin_username
             cloudify_password = cfy_config.security_admin_password
-            ssl_enabled = cfy_config.security_ssl.get('enabled', True)
-            if ssl_enabled:
+            if cfy_config.security_ssl.get('enabled', False):
+                manager_port = SECURED_MANAGER_PORT
+                manager_protocol = SECURED_MANAGER_PROTOCOL
                 verify_certificate = cfy_config.security_ssl.get(
-                    'verify_certificate', True)
+                    'verify_certificate', False)
 
         self.security_context = {
             'security_enabled': security_enabled,
-            'ssl_enabled': ssl_enabled,
-            'verify_ssl_certificate': verify_certificate,
+            'manager_port': manager_port,
+            'manager_protocol': manager_protocol,
             'cloudify_username': cloudify_username,
-            'cloudify_password': cloudify_password
+            'cloudify_password': cloudify_password,
+            'verify_ssl_certificate': verify_certificate,
         }
 
     def execute_workflow(self,
