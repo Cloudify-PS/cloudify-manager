@@ -19,6 +19,7 @@ import traceback
 import os
 import yaml
 import psutil
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flask import (
@@ -160,6 +161,11 @@ def log_response(response):
 
 def handle_maintenance_mode():
 
+    # enabling internal requests
+    if utils.is_internal_request(request) \
+            and utils.is_bypass_maintenance_mode(request):
+        return
+
     allowed_endpoints = ['maintenance',
                          'status',
                          'version']
@@ -168,40 +174,60 @@ def handle_maintenance_mode():
     index = request.endpoint.find('/')
     request_endpoint = request.endpoint[index+1:]
 
-    for endpoint in allowed_endpoints:
-        if request_endpoint.startswith(endpoint):
-            return
-
     maintenance_file = os.path.join(
         config.instance().maintenance_folder,
         MAINTENANCE_MODE_STATUS_FILE)
 
     if os.path.isfile(maintenance_file):
-        with open(maintenance_file, 'r') as f:
-            status = f.read()
+        state = utils.read_json_file(maintenance_file)
 
-        if status == MAINTENANCE_MODE_ACTIVE:
-            return maintenance_mode_error()
-        if status == ACTIVATING_MAINTENANCE_MODE:
+        if state['status'] == ACTIVATING_MAINTENANCE_MODE:
+            running_executions = utils.get_running_executions()
+
+            if not running_executions:
+                now = str(datetime.now())
+                utils.write_dict_to_json_file(maintenance_file, state)
+                state['status'] = MAINTENANCE_MODE_ACTIVE
+                state['activated_at'] = now
+                state['remaining_executions'] = None
+                utils.write_dict_to_json_file(maintenance_file, state)
+
+            if utils.check_allowed_endpoint(allowed_endpoints,
+                                            request_endpoint):
+                return
+
             forbidden_requests = ['POST', 'PATCH', 'PUT']
+            status = state['status']
 
             if request_endpoint == 'snapshots/<string:snapshot_id>':
                 if request.method in forbidden_requests:
-                    return activating_maintenance_mode_error()
-            if request_endpoint == 'snapshots/<string:snapshot_id>/restore':
-                return activating_maintenance_mode_error()
+                    return _return_maintenance_error(status)
+            if request_endpoint == 'snapshots/' \
+                                   '<string:snapshot_id>/restore':
+                return _return_maintenance_error(status)
 
             if request_endpoint == 'executions':
                 if request.method in forbidden_requests:
-                    return activating_maintenance_mode_error()
+                    return _return_maintenance_error(status)
 
             if request_endpoint == 'deployments/<string:deployment_id>':
                 if request.method in forbidden_requests:
-                    return activating_maintenance_mode_error()
+                    return _return_maintenance_error(status)
 
             if request_endpoint == 'deployment-modifications':
                 if request.method in forbidden_requests:
-                    return activating_maintenance_mode_error()
+                    return _return_maintenance_error(status)
+
+        if utils.check_allowed_endpoint(allowed_endpoints, request_endpoint):
+            return
+        if state['status'] == MAINTENANCE_MODE_ACTIVE:
+            return maintenance_mode_error()
+
+
+def _return_maintenance_error(status):
+    if status == MAINTENANCE_MODE_ACTIVE:
+        return maintenance_mode_error()
+    return activating_maintenance_mode_error()
 
 
 def headers_pretty_print(headers):

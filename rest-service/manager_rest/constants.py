@@ -13,7 +13,7 @@
 #  * See the License for the specific language governing permissions and
 #  * limitations under the License.
 
-MAINTENANCE_MODE_STATUS_FILE = 'status.txt'
+MAINTENANCE_MODE_STATUS_FILE = 'status.json'
 ACTIVATING_MAINTENANCE_MODE = 'activating'
 MAINTENANCE_MODE_ACTIVE = 'activated'
 NOT_IN_MAINTENANCE_MODE = 'deactivated'

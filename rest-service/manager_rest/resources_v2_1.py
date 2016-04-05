@@ -15,6 +15,8 @@
 #
 
 import os
+from datetime import datetime
+
 import tempfile
 
 import shutil
@@ -22,6 +24,8 @@ import shutil
 from flask.ext.restful_swagger import swagger
 
 from flask_securest.rest_security import SecuredResource
+from flask_securest import rest_security
+from manager_rest import utils
 from flask import request
 
 from manager_rest.resources import (marshal_with,
@@ -49,46 +53,57 @@ class MaintenanceMode(SecuredResource):
     @exceptions_handled
     @marshal_with(responses_v2_1.MaintenanceMode)
     def get(self, **kwargs):
-        maintenance_file_path = get_maintenance_file_path()
+        maintenance_file_path = _get_maintenance_file_path()
         if os.path.isfile(maintenance_file_path):
-            with open(maintenance_file_path, 'r') as f:
-                status = f.read()
+            state = utils.read_json_file(maintenance_file_path)
 
-            if status == MAINTENANCE_MODE_ACTIVE:
-                return {'status': MAINTENANCE_MODE_ACTIVE}
-            if status == ACTIVATING_MAINTENANCE_MODE:
-                executions = get_blueprints_manager().executions_list(
-                        is_include_system_workflows=True).items
-                for execution in executions:
-                    if execution.status not in models.Execution.END_STATES:
-                        return {'status': ACTIVATING_MAINTENANCE_MODE}
+            if state['status'] == MAINTENANCE_MODE_ACTIVE:
+                return state
+            if state['status'] == ACTIVATING_MAINTENANCE_MODE:
+                running_executions = utils.get_running_executions()
+                if running_executions:
+                    state['remaining_executions'] = running_executions
+                    return state
 
-                write_maintenance_state(MAINTENANCE_MODE_ACTIVE)
-                return {'status': MAINTENANCE_MODE_ACTIVE}
+                # No 'else' clause since this will never happen. If there are
+                # no running executions, maintenance mode would have
+                # been activated at the maintenance handler hook (server.py)
+
         else:
-            return {'status': NOT_IN_MAINTENANCE_MODE}
+            return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE)
 
 
 class MaintenanceModeAction(SecuredResource):
     @exceptions_handled
     @marshal_with(responses_v2_1.MaintenanceMode)
     def post(self, maintenance_action, **kwargs):
-        maintenance_file_path = get_maintenance_file_path()
+        maintenance_file_path = _get_maintenance_file_path()
 
         if maintenance_action == 'activate':
             if os.path.isfile(maintenance_file_path):
-                return {'status': MAINTENANCE_MODE_ACTIVE}, 304
+                state = utils.read_json_file(maintenance_file_path)
+                return state, 304
 
+            now = str(datetime.now())
+            user = ''
+            if rest_security._is_secured_request_context():
+                user = rest_security.get_username()
+            remaining_executions = utils.get_running_executions()
             utils.mkdirs(config.instance().maintenance_folder)
-            write_maintenance_state(ACTIVATING_MAINTENANCE_MODE)
+            new_state = _prepare_maintenance_dict(
+                    status=ACTIVATING_MAINTENANCE_MODE,
+                    activation_requested_at=now,
+                    remaining_executions=remaining_executions,
+                    requested_by=user)
+            utils.write_dict_to_json_file(maintenance_file_path, new_state)
 
-            return {'status': ACTIVATING_MAINTENANCE_MODE}
+            return new_state
 
         if maintenance_action == 'deactivate':
             if not os.path.isfile(maintenance_file_path):
-                return {'status': NOT_IN_MAINTENANCE_MODE}, 304
+                return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE), 304
             os.remove(maintenance_file_path)
-            return {'status': NOT_IN_MAINTENANCE_MODE}
+            return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE)
 
 
 class DeploymentUpdateSteps(SecuredResource):

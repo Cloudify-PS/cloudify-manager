@@ -26,11 +26,15 @@ import errno
 from os import path, makedirs, listdir
 import uuid
 
+import json
 from flask.ext.restful import abort
 from setuptools import archive_util
 
 from manager_rest import manager_exceptions
 from manager_rest import chunked
+
+from manager_rest.blueprints_manager import get_blueprints_manager
+from manager_rest import models
 
 
 def setup_logger(logger_name, logger_level=logging.DEBUG, handlers=None,
@@ -252,3 +256,48 @@ def create_filter_params_list_description(parameters, list_type):
              'dataType': 'string',
              'defaultValue': None,
              'paramType': 'query'} for filter_val in parameters]
+
+
+def get_running_executions():
+    executions = get_blueprints_manager().executions_list(
+            is_include_system_workflows=True).items
+    running_executions = []
+    for execution in executions:
+        if execution.status not in models.Execution.END_STATES:
+            running_executions.append({
+                'id': execution.id,
+                'deployment_id': execution.deployment_id,
+                'workflow_id': execution.workflow_id
+            })
+
+    return running_executions
+
+
+def read_json_file(file_path):
+    with open(file_path) as f:
+        json_data = json.load(f)
+
+    return json_data
+
+
+def write_dict_to_json_file(file_path, dictionary):
+    with open(file_path, 'w') as f:
+        json.dump(dictionary, f)
+
+
+def check_allowed_endpoint(allowed_endpoints, request_endpoint):
+    for endpoint in allowed_endpoints:
+        if request_endpoint.startswith(endpoint):
+            return True
+    return False
+
+
+def is_internal_request(request):
+    return 'REMOTE_ADDR' in request.headers.environ \
+           and 'HTTP_HOST' in request.headers.environ \
+           and request.headers.environ['REMOTE_ADDR'] == \
+               request.headers.environ['HTTP_HOST']
+
+
+def is_bypass_maintenance_mode(request):
+    return request.headers.get('X-Bypass-Maintenance')
