@@ -760,6 +760,56 @@ class TestDeploymentUpdate(TestCase):
         self.assertDictContainsSubset(operation_template,
                                       affected_lifecycle_operation)
 
+    def test_add_workflow(self):
+        deployment, modified_bp_path = \
+            self._deploy_and_get_modified_bp_path('add_workflow')
+        dep_update = \
+            self.client.deployment_updates.stage(deployment.id,
+                                                 modified_bp_path)
+
+        self.client.deployment_updates.add(
+                dep_update.id,
+                entity_type='workflow',
+                entity_id='my_custom_workflow')
+
+        self.client.deployment_updates.commit(dep_update.id)
+
+        # assert that 'update' workflow was executed
+        executions = \
+            self.client.executions.list(deployment_id=deployment.id,
+                                        workflow_id='update')
+        execution = self._wait_for_execution(executions[0])
+        self.assertEquals('terminated', execution['status'],
+                          execution.error)
+
+        affected_node = self.client.deployments.get(dep_update.deployment_id)
+        print affected_node
+
+    def test_remove_workflow(self):
+        deployment, modified_bp_path = \
+            self._deploy_and_get_modified_bp_path('remove_workflow')
+        dep_update = \
+            self.client.deployment_updates.stage(deployment.id,
+                                                 modified_bp_path)
+
+        self.client.deployment_updates.remove(
+                dep_update.id,
+                entity_type='workflow',
+                entity_id='my_custom_workflow')
+
+        self.client.deployment_updates.commit(dep_update.id)
+
+        # assert that 'update' workflow was executed
+        executions = \
+            self.client.executions.list(deployment_id=deployment.id,
+                                        workflow_id='update')
+        execution = self._wait_for_execution(executions[0])
+        self.assertEquals('terminated', execution['status'],
+                          execution.error)
+
+        affected_node = self.client.deployments.get(dep_update.deployment_id)
+        print affected_node
+
     def test_add_relationship_operation(self):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('add_relationship_operation')
