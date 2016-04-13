@@ -36,6 +36,7 @@ from wagon.wagon import Wagon
 from elasticsearch import Elasticsearch
 
 import mock_plugins
+from testenv.constants import MANAGER_REST_HOST
 from testenv.constants import MANAGER_REST_PORT
 from testenv.constants import RABBITMQ_VERBOSE_MESSAGES_ENABLED
 from testenv.constants import RABBITMQ_POLLING_ENABLED

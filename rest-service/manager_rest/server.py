@@ -76,7 +76,6 @@ def setup_app(warnings=None):
         init_secured_app(app)
 
     app.before_request(handle_maintenance_mode)
-
     app.before_request(log_request)
     app.after_request(log_response)
 

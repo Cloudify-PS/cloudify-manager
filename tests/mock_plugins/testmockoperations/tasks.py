@@ -262,7 +262,7 @@ def mock_operation_get_instance_ip_from_context(ctx, **_):
             'mock_operation_invocation', []
         )
         data['mock_operation_invocation'].append((
-            ctx.node.name, ctx.instance.manager_host_ip
+            ctx.node.name, ctx.instance.internal_manager_host
         ))
 
     return True
@@ -276,11 +276,11 @@ def get_instance_ip_of_source_and_target(ctx, **_):
         )
         data['mock_operation_invocation'].append((
             '{}_source'.format(ctx.source.node.name),
-            ctx.source.instance.manager_host_ip
+            ctx.source.instance.internal_manager_host
         ))
         data['mock_operation_invocation'].append((
             '{}_target'.format(ctx.target.node.name),
-            ctx.target.instance.manager_host_ip
+            ctx.target.instance.internal_manager_host
         ))
     return True
 

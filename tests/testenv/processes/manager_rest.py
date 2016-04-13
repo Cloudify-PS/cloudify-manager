@@ -23,7 +23,7 @@ from cloudify.utils import setup_logger
 from os.path import dirname
 from os import path
 from cloudify_rest_client import CloudifyClient
-from testenv.constants import MANAGER_REST_PORT
+from testenv.constants import MANAGER_REST_HOST, MANAGER_REST_PORT
 
 
 logger = setup_logger('manager_rest_process')
@@ -32,6 +32,7 @@ logger = setup_logger('manager_rest_process')
 class ManagerRestProcess(object):
 
     def __init__(self,
+                 host,
                  port,
                  file_server_dir,
                  file_server_base_uri,
@@ -51,6 +52,7 @@ class ManagerRestProcess(object):
                  amqp_password,
                  maintenance_folder):
         self.process = None
+        self.host = host or MANAGER_REST_HOST
         self.port = port or MANAGER_REST_PORT
         self.file_server_dir = file_server_dir
         self.file_server_base_uri = file_server_base_uri
