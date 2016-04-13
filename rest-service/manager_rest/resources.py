@@ -449,7 +449,10 @@ class BlueprintsId(SecuredResource):
         """
         Upload a blueprint (id specified)
         """
-        return UploadedBlueprintsManager().receive_uploaded_data(blueprint_id)
+        return UploadedBlueprintsManager().\
+            receive_uploaded_data(data_id=blueprint_id,
+                                  blueprint_app_name='blueprint.yaml',
+                                  data_type='blueprint')
 
     @swagger.operation(
         responseClass=responses.BlueprintState,

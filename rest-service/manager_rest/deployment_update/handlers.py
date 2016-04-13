@@ -34,7 +34,8 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
         """handles updating new and extended nodes onto the storage.
 
         :param dep_update:
-        :return: a list of all of the nodes (including the non modified nodes)
+        :return: a list of all of the nodes
+        (including the non add_node.modification nodes)
         """
         current_nodes = self.sm.get_nodes(
                 filters={'deployment_id': dep_update.deployment_id}).items
@@ -126,7 +127,7 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
         """Handles adding a relationship
 
         :param ctx:
-        :return: the modified node
+        :return: the add_node.modification node
         """
         # Update source relationships and plugins
         source_changes = {
@@ -249,7 +250,7 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
         """Handles removing an entity
 
         :param ctx:
-        :return: entity id and it's modified node
+        :return: entity id and it's add_node.modification node
         """
         remove_entity_mapper = {
             ENTITY_TYPES.NODE: self._remove_node,
@@ -278,7 +279,7 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
     def _remove_relationship(ctx, current_nodes):
         """Handles removing a relationship
 
-        :return: the modified node
+        :return: the add_node.modification node
         """
         current_node = current_nodes[ctx.raw_node_id]
         current_node[ctx.RELATIONSHIPS].remove(ctx.storage_entity_value)
@@ -405,8 +406,8 @@ class DeploymentUpdateNodeInstanceHandler(UpdateHandler):
 
         :param dep_update:
         :param updated_instances:
-        :return: dictionary of modified node instances with key as modification
-        type
+        :return: dictionary of add_node.modification node instances with key as
+        modification type
         """
         handlers_mapper = {
             CHANGE_TYPE.ADDED_AND_RELATED:

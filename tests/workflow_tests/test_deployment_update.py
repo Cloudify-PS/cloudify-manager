@@ -67,17 +67,23 @@ class DeploymentUpdateBase(TestCase):
         if exists:
             self.fail(error_msg.format(target, expected_type))
 
-    def _deploy_and_get_modified_bp_path(self, bp_name):
+    def _deploy_and_get_modified_bp_path(self, test_name):
 
-        base_bp = '{0}_base.yaml'.format(bp_name)
-        modified_bp = '{0}_modification.yaml'.format(bp_name)
+        base_dir = os.path.join(test_name, 'base')
+        modified_dir = os.path.join(test_name, 'modification')
+        base_bp = '{0}_base.yaml'.format(test_name)
+        modified_bp = '{0}_modification.yaml'.format(test_name)
 
         base_bp_path = \
-            resource(os.path.join(blueprints_base_path, base_bp))
+            resource(os.path.join(blueprints_base_path,
+                                  base_dir,
+                                  base_bp))
         deployment, _ = deploy(base_bp_path)
-        modified_bp_path = \
-            resource(os.path.join(blueprints_base_path, modified_bp))
 
+        modified_bp_path = \
+            resource(os.path.join(blueprints_base_path,
+                                  modified_dir,
+                                  modified_bp))
         return deployment, modified_bp_path
 
     def _wait_for_execution_to_terminate(self, deployment_id, workflow_id):
@@ -157,7 +163,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('add_node')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id,
                     {'intact': 'site1',
@@ -198,7 +204,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
             )
 
             self._assert_equal_entity_dicts(
-                    base_node_instnaces,
+                    base_node_instances,
                     modified_node_instances,
                     keys=['intact', 'added'],
                     excluded_items=['runtime_properties']
@@ -246,7 +252,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
             self._deploy_and_get_modified_bp_path(
                     'add_node_operation')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id, {'modified': 'site1'})
 
@@ -277,7 +283,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['modified']
         )
@@ -312,7 +318,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['modified'],
                 excluded_items=['runtime_properties']
@@ -587,7 +593,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
                 expected_type='new_relationship_type')
 
         dict_to_check = self._create_dict(['inputs', 'script_path',
-                                           'scripts/increment.sh'])
+                                           'increment.sh'])
 
         # check all operation have been executed
         source_operations = \
@@ -606,7 +612,7 @@ class TestDeploymentUpdateAddition(DeploymentUpdateBase):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('add_property')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id,
                     {'affected_node': 'site1'})
@@ -648,7 +654,7 @@ class TestDeploymentUpdateRemoval(DeploymentUpdateBase):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('remove_node')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id,
                     {'remove_related': 'site1'})
@@ -680,7 +686,7 @@ class TestDeploymentUpdateRemoval(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['remove_related', 'removed'],
                 excluded_items=['runtime_properties']
@@ -786,7 +792,7 @@ class TestDeploymentUpdateRemoval(DeploymentUpdateBase):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('remove_relationship')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id,
                     {'related': 'site1',
@@ -823,7 +829,7 @@ class TestDeploymentUpdateRemoval(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['related', 'target', 'source'],
                 excluded_items=['runtime_properties', 'relationships']
@@ -958,7 +964,7 @@ class TestDeploymentUpdateRemoval(DeploymentUpdateBase):
         deployment, modified_bp_path = \
             self._deploy_and_get_modified_bp_path('remove_property')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id,
                     {'affected_node': 'site1'})
@@ -1022,13 +1028,13 @@ class TestDeploymentUpdateModification(DeploymentUpdateBase):
         self._wait_for_execution_to_terminate(deployment.id,
                                               'execute_operation')
 
-        base_nodes, base_node_instnaces = \
+        base_nodes, base_node_instances = \
             self._get_nodes_and_node_instances_dict(
                     deployment.id, {'modified': 'site1'})
 
         self.assertDictContainsSubset(
                 {'source_ops_counter': '1'},
-                base_node_instnaces['modified'][0]['runtime_properties']
+                base_node_instances['modified'][0]['runtime_properties']
         )
 
         dep_update = \
@@ -1059,7 +1065,7 @@ class TestDeploymentUpdateModification(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['modified']
         )
@@ -1094,7 +1100,7 @@ class TestDeploymentUpdateModification(DeploymentUpdateBase):
         )
 
         self._assert_equal_entity_dicts(
-                base_node_instnaces,
+                base_node_instances,
                 modified_node_instances,
                 keys=['modified'],
                 excluded_items=['runtime_properties']
@@ -1189,7 +1195,7 @@ class TestDeploymentUpdateModification(DeploymentUpdateBase):
                 expected_type='new_relationship_type')
 
         dict_to_check = self._create_dict(['inputs', 'script_path',
-                                           'scripts/decrement.sh'])
+                                           'decrement.sh'])
 
         # check all operation have been executed
         source_operations = \

@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 from flask import current_app
 
+from dsl_parser.parser import parse_from_path
 from manager_rest import models, storage_manager
 from manager_rest.blueprints_manager import tasks, BlueprintsManager
 import manager_rest.manager_exceptions
@@ -66,14 +67,19 @@ class DeploymentUpdateManager(object):
         """Stage a deployment update
 
         :param deployment_id: the deployment id for the update
-        :param staged_blueprint: the modified blueprint
+        :param staged_blueprint: the add_node.modification blueprint
         :return:
         """
 
         self._validate_no_active_updates_per_deployment(deployment_id)
 
+        # parsing the blueprint from here
+        blueprint = parse_from_path(staged_blueprint)
+        # running intrinsic function
+        blueprint = tasks.prepare_deployment_plan(blueprint)
+
         deployment_update = models.DeploymentUpdate(deployment_id,
-                                                    staged_blueprint)
+                                                    blueprint)
         self.sm.put_deployment_update(deployment_update)
         return deployment_update
 
@@ -195,8 +201,9 @@ class DeploymentUpdateManager(object):
 
         :param dep_update:
         :param node_instances: a dictionary of modification type and
-        modified instances
-        :param modified_entity_ids: the entire modified entities list (by id)
+        add_node.modification instances
+        :param modified_entity_ids: the entire add_node.modification entities
+        list (by id)
         :return:
         """
 
