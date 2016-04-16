@@ -2,9 +2,9 @@
   [ctx]
     (let [deployment-id         (:deployment_id ctx)
           parameters            (:trigger-parameters ctx)
-          manager-rest-host     (or (System/getenv "MANAGER_REST_HOST") "127.0.0.1")
-          manager-rest-protocol (or (System/getenv "MANAGER_REST_PROTOCOL") "http")
-          raw-manager-rest-port (or (System/getenv "MANAGER_REST_PORT") "80")
+          manager-rest-host     (or (System/getenv "REST_HOST") "127.0.0.1")
+          manager-rest-protocol (or (System/getenv "REST_PROTOCOL") "http")
+          raw-manager-rest-port (or (System/getenv "REST_PORT") "80")
           manager-rest-port     (Integer/parseInt raw-manager-rest-port)
           raw-verify-ssl-cert   (or (System/getenv "VERIFY_SSL_CERTIFICATE") "false")
           verify-ssl-cert       (Boolean/valueOf raw-verify-ssl-cert)

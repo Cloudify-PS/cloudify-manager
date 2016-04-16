@@ -27,8 +27,8 @@ from cloudify.utils import setup_logger
 from cloudify_agent.app import app as celery_client
 
 from testenv.constants import FILE_SERVER_PORT
-from testenv.constants import MANAGER_REST_HOST
-from testenv.constants import MANAGER_REST_PORT
+from testenv.constants import REST_HOST
+from testenv.constants import REST_PORT
 from testenv.constants import FILE_SERVER_BLUEPRINTS_FOLDER
 
 
@@ -43,15 +43,15 @@ class CeleryWorkerProcess(object):
                  additional_includes=None,
                  name=None,
                  hostname=None,
-                 manager_rest_host=MANAGER_REST_HOST,
-                 manager_rest_port=MANAGER_REST_PORT,
+                 rest_host=REST_HOST,
+                 rest_port=REST_PORT,
                  concurrency=1):
 
         self.test_working_dir = test_working_dir
         self.name = name or queues[0]
         self.hostname = hostname or queues[0]
-        self.manager_rest_host = manager_rest_host
-        self.manager_rest_port = manager_rest_port
+        self.rest_host = rest_host
+        self.rest_port = rest_port
         self.queues = ','.join(queues)
         self.hostname = hostname or queues[0]
         self.concurrency = concurrency
@@ -146,8 +146,8 @@ class CeleryWorkerProcess(object):
             CELERY_LOG_DIR=self.workdir,
             TEST_WORKING_DIR=self.test_working_dir,
             ENV_DIR=self.envdir,
-            MANAGER_REST_HOST=self.manager_rest_host,
-            MANAGER_REST_PORT=str(self.manager_rest_port),
+            REST_HOST=self.rest_host,
+            REST_PORT=str(self.rest_port),
             MANAGEMENT_IP='localhost',
             MANAGER_FILE_SERVER_BLUEPRINTS_ROOT_URL='http://localhost:{0}/{1}'
             .format(FILE_SERVER_PORT, FILE_SERVER_BLUEPRINTS_FOLDER),

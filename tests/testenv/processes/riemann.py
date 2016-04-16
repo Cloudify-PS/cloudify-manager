@@ -21,7 +21,7 @@ import time
 import requests
 
 from os import path
-from testenv.constants import MANAGER_REST_HOST, MANAGER_REST_PORT
+from testenv.constants import REST_HOST, REST_PORT
 from testenv.utils import get_resource
 from cloudify.utils import setup_logger
 
@@ -71,8 +71,8 @@ class RiemannProcess(object):
         env = os.environ.copy()
         env['RABBITMQ_HOST'] = 'localhost'
         env['LANGOHR_JAR'] = self._langohr_jar_path()
-        env['MANAGER_REST_HOST'] = MANAGER_REST_HOST
-        env['MANAGER_REST_PORT'] = str(MANAGER_REST_PORT)
+        env['REST_HOST'] = REST_HOST
+        env['REST_PORT'] = str(REST_PORT)
         env['RABBITMQ_USER'] = 'guest'
         env['RABBITMQ_PASS'] = 'guest'
 

@@ -31,7 +31,7 @@ from cloudify.utils import setup_logger
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.executions import Execution
 from manager_rest.es_storage_manager import ESStorageManager
-from testenv.processes.manager_rest import MANAGER_REST_HOST, MANAGER_REST_PORT
+from testenv.processes.manager_rest import REST_HOST, REST_PORT
 
 
 PROVIDER_CONTEXT = {
@@ -204,7 +204,7 @@ def is_node_started(node_id):
 
 
 def create_rest_client():
-    return CloudifyClient(host=MANAGER_REST_HOST, port=MANAGER_REST_PORT)
+    return CloudifyClient(host=REST_HOST, port=REST_PORT)
 
 
 def create_es_db_client():
