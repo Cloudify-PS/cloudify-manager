@@ -4,7 +4,7 @@
 # All Rights Reserved.
 #
 
-name "restservice"
+name "rest-service"
 maintainer "Gigaspaces"
 homepage "http://getcloudify.org/"
 
@@ -25,7 +25,7 @@ dependency "preparation"
 # cloudify dependencies/components
 dependency "python"
 dependency "pip"
-dependency "restservice"
+dependency "rest-service"
 
 # Version manifest file
 dependency "version-manifest"

@@ -11,12 +11,12 @@ pkg_path = Dir.glob("#{ENV['HOME']}/pkg/cloudify*msi")[0] if node['platform_fami
 
 if node['platform_family'].include?("debian")
   # source not supported by apt_package so must override with dpkg_package
-  dpkg_package 'restservice' do
+  dpkg_package 'rest-service' do
     action :install
     source pkg_path
   end
 else
-  package 'restservice' do
+  package 'rest-service' do
     action :install
     source pkg_path
   end

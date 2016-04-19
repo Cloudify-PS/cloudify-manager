@@ -28,6 +28,6 @@ source git: "https://github.com/cloudify-cosmo/cloudify-manager"
 build do
     command ["#{install_dir}/embedded/bin/pip",
          "install", "-I", "--build=#{project_dir}",
-         ".",
+         "./rest-service",
          "-r", "dev-requirements.txt"]
 end
