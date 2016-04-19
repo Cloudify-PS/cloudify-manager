@@ -19,7 +19,7 @@ build_version Omnibus::BuildVersion.semver
 build_iteration 1
 
 # Creates required build directories
-# dependency "preparation"
+dependency "preparation"
 
 # cloudify dependencies/components
 dependency "python"
