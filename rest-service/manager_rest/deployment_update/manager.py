@@ -24,7 +24,8 @@ import manager_rest.workflow_client as wf_client
 
 from dsl_parser import constants
 from handlers import (DeploymentUpdateNodeHandler,
-                      DeploymentUpdateNodeInstanceHandler)
+                      DeploymentUpdateNodeInstanceHandler,
+                      DeploymentUpdateDeploymentHandler)
 from validator import StepValidator
 from utils import extract_ids
 from constants import STATE, CHANGE_TYPE
@@ -37,6 +38,8 @@ class DeploymentUpdateManager(object):
         self.workflow_client = wf_client.get_workflow_client()
         self._node_handler = DeploymentUpdateNodeHandler()
         self._node_instance_handler = DeploymentUpdateNodeInstanceHandler()
+        self._deployment_handler = DeploymentUpdateDeploymentHandler()
+
         self._step_validator = StepValidator()
 
     def get_deployment_update(self, deployment_update_id):
@@ -109,6 +112,10 @@ class DeploymentUpdateManager(object):
         dep_update.state = STATE.COMMITTING
         self.sm.update_deployment_update(dep_update)
 
+        # Handle any deployment related changes. i.e. workflows and deployments
+        modified_deployment_entities, updated_deployment = \
+            self._deployment_handler.handle(dep_update)
+
         # Update the nodes on the storage
         modified_entity_ids, depup_nodes = \
             self._node_handler.handle(dep_update)
@@ -125,6 +132,7 @@ class DeploymentUpdateManager(object):
 
         # Saving the needed changes back to sm for future use
         # (removing entities).
+        dep_update.deployment_update_deployment = updated_deployment
         dep_update.deployment_update_nodes = depup_nodes
         dep_update.deployment_update_node_instances = depup_node_instances
         dep_update.modified_entity_ids = modified_entity_ids.to_dict()
@@ -255,6 +263,14 @@ class DeploymentUpdateManager(object):
         self._node_instance_handler.finalize(dep_update)
 
         self._node_handler.finalize(dep_update)
+
+        dep_update = self.get_deployment_update(deployment_update_id)
+
+        # The order of these matter
+        for finalizer in [self._deployment_handler,
+                          self._node_instance_handler,
+                          self._node_handler]:
+            finalizer.finalize(dep_update)
 
         # mark deployment update as committed
         dep_update.state = STATE.COMMITTED

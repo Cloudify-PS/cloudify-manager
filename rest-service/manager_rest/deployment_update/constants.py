@@ -15,7 +15,8 @@ class DeploymentUpdateEntityTypes(DeploymentUpdateEnumBase):
     RELATIONSHIP = 'relationship'
     PROPERTY = 'property'
     OPERATION = 'operation'
-
+    WORKFLOW = 'workflow'
+    OUTPUT = 'output'
 
 class DeploymentUpdateOperation(DeploymentUpdateEnumBase):
     ADD = 'add'

@@ -24,7 +24,8 @@ class StepValidator(object):
             ENTITY_TYPES.NODE: self._validate_node,
             ENTITY_TYPES.RELATIONSHIP: self._validate_relationship,
             ENTITY_TYPES.PROPERTY: self._validate_property,
-            ENTITY_TYPES.OPERATION: self._validate_operation
+            ENTITY_TYPES.OPERATION: self._validate_operation,
+            ENTITY_TYPES.WORKFLOW: lambda x, y: True
         }
         if step.entity_type in ENTITY_TYPES:
             validator = validation_mapper[step.entity_type]

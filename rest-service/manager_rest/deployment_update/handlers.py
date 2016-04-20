@@ -29,6 +29,10 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
     def __init__(self):
         super(DeploymentUpdateNodeHandler, self).__init__()
         self.modified_entities = utils.ModifiedEntitiesDict()
+        self._support_entity_types = {ENTITY_TYPES.NODE,
+                                      ENTITY_TYPES.OPERATION,
+                                      ENTITY_TYPES.PROPERTY,
+                                      ENTITY_TYPES.PROPERTY}
 
     def handle(self, dep_update):
         """handles updating new and extended nodes onto the storage.
@@ -52,13 +56,14 @@ class DeploymentUpdateNodeHandler(UpdateHandler):
         # Each handler updated the dict of updated nodes, which enables
         # accumulating changes.
         for step in dep_update.steps:
-            entity_updater = entities_update_mapper[step.operation]
-            entity_context = get_entity_context(dep_update,
-                                                step.entity_type,
-                                                step.entity_id)
-            entity_id = entity_updater(entity_context, nodes_dict)
+            if step.entity_type in self._support_entity_types:
+                entity_updater = entities_update_mapper[step.operation]
+                entity_context = get_entity_context(dep_update,
+                                                    step.entity_type,
+                                                    step.entity_id)
+                entity_id = entity_updater(entity_context, nodes_dict)
 
-            self.modified_entities[step.entity_type].append(entity_id)
+                self.modified_entities[step.entity_type].append(entity_id)
 
         return self.modified_entities, nodes_dict.values()
 
@@ -592,3 +597,119 @@ class DeploymentUpdateNodeInstanceHandler(UpdateHandler):
         self.sm.update_node_instance(
                 manager_rest.models.DeploymentNodeInstance(**raw_node_instance)
         )
+
+
+class DeploymentUpdateDeploymentHandler(UpdateHandler):
+
+    def __init__(self):
+        super(DeploymentUpdateDeploymentHandler, self).__init__()
+        self.modified_entities = {
+            ENTITY_TYPES.WORKFLOW: []
+        }
+        self._support_entity_types = {ENTITY_TYPES.WORKFLOW,
+                                      ENTITY_TYPES.OUTPUT}
+
+    def handle(self, dep_update):
+
+        deployment = self.sm.get_deployment(dep_update.deployment_id).to_dict()
+
+        entities_update_mapper = {
+            'add': self._add_entity,
+            'remove': self._remove_entity,
+            'modify': self._modify_entity
+        }
+
+        for step in dep_update.steps:
+            if step.entity_type in self._support_entity_types:
+                entity_updater = entities_update_mapper[step.operation]
+                entity_id = entity_updater(
+                        dep_update,
+                        step.entity_type,
+                        step.entity_id,
+                        deployment
+                )
+
+                self.modified_entities[step.entity_type].append(entity_id)
+
+        return self.modified_entities, deployment
+
+    def _add_entity(self, dep_update, entity_type, entity_id, deployment):
+        add_entity_mapper = {
+            ENTITY_TYPES.WORKFLOW: self._add_workflow,
+            ENTITY_TYPES.OUTPUT: self._add_output
+        }
+        add_entity_handler = add_entity_mapper[entity_type]
+
+        entity_id = add_entity_handler(dep_update, entity_id, deployment)
+
+        return entity_id
+
+    def _add_workflow(self, dep_update, entity_id, deployment):
+        WORKFLOWS, workflow_id = utils.get_entity_keys(entity_id)
+        workflow = dep_update.blueprint[WORKFLOWS][workflow_id]
+
+        self.sm.update_deployment(
+                dep_update.deployment_id,
+                utils.create_dict([WORKFLOWS, workflow_id, workflow])
+        )
+        deployment[WORKFLOWS][workflow_id] = workflow
+
+        return entity_id
+
+    def _add_output(self, dep_update, entity_id):
+        output = dep_update.blueprint['outputs'][entity_id]
+
+        self.sm.update_deployment(
+                dep_update.deployment_id,
+                utils.create_dict(['outputs', entity_id, output])
+        )
+
+        return \
+            self.sm.get_deployment(dep_update.deployment_id).outputs[entity_id]
+
+    def _remove_entity(self, dep_update, entity_type, entity_id):
+
+        entities_remove_mapper = {
+            ENTITY_TYPES.WORKFLOW: self._remove_workflow,
+            ENTITY_TYPES.OUTPUT: self._remove_output
+        }
+        remove_entity_handler = entities_remove_mapper[entity_type]
+
+        updated_entity = remove_entity_handler(dep_update, entity_id)
+
+        return entity_id, updated_entity
+
+    def _remove_workflow(self, dep_update, entity_id):
+        WORKFLOWS, workflow_id = utils.get_entity_keys(entity_id)
+        workflows = \
+            self.sm.get_deployment(dep_update.deployment_id).workflows
+        del(workflows[workflow_id])
+
+        return entity_id
+
+    def _remove_output(self, dep_update, entity_id):
+        old_outputs = \
+            self.sm.get_deployment(dep_update.deployment_id).outputs
+
+        del(old_outputs[entity_id])
+
+        return old_outputs
+
+    def _modify_entity(self, dep_update, entity_type, entity_id):
+        entities_update_mapper = {
+            ENTITY_TYPES.WORKFLOW: self._modify_workflow,
+        }
+        modify_entity_handler = entities_update_mapper[entity_type]
+
+        updated_node = modify_entity_handler(dep_update, entity_id)
+
+        return entity_id, updated_node.to_dict()
+
+    def _modify_workflow(self, dep_update, entity_id):
+        pass
+
+    def finalize(self, dep_update):
+        modified_deployment = dep_update.deployment_update_deployment
+        self.sm.delete_deployment(dep_update.deployment_id)
+        deployment = manager_rest.models.Deployment(**modified_deployment)
+        self.sm.put_deployment(deployment)

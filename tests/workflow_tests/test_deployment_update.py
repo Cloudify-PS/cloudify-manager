@@ -770,7 +770,7 @@ class TestDeploymentUpdate(TestCase):
         self.client.deployment_updates.add(
                 dep_update.id,
                 entity_type='workflow',
-                entity_id='my_custom_workflow')
+                entity_id='workflows:my_custom_workflow')
 
         self.client.deployment_updates.commit(dep_update.id)
 
