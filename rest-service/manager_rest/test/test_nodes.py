@@ -55,6 +55,22 @@ class NodesTest(base_test.BaseServerTestCase):
             'version': 'not an int'})
         self.assertEqual(400, response.status_code)
 
+    def test_old_version(self):
+        self.put_node_instance(
+            instance_id='1234',
+            deployment_id='111',
+            runtime_properties={
+                'key': 'value'
+            },
+            version=1
+        )
+        update = {
+            'runtime_properties': {'key': 'new value'},
+            'version': 1
+        }
+        response = self.patch('/node-instances/1234', update)
+        self.assertEqual(409, response.status_code)
+
     def test_patch_node(self):
         self.put_node_instance(
             instance_id='1234',
@@ -279,7 +295,8 @@ class NodesTest(base_test.BaseServerTestCase):
                           instance_id,
                           deployment_id,
                           runtime_properties=None,
-                          node_id=None):
+                          node_id=None,
+                          version=None):
         runtime_properties = runtime_properties or {}
         from manager_rest.models import DeploymentNodeInstance
         node = DeploymentNodeInstance(id=instance_id,
@@ -287,7 +304,7 @@ class NodesTest(base_test.BaseServerTestCase):
                                       deployment_id=deployment_id,
                                       runtime_properties=runtime_properties,
                                       state=None,
-                                      version=None,
+                                      version=version,
                                       relationships=None,
                                       host_id=None)
         storage_manager._get_instance().put_node_instance(node)
