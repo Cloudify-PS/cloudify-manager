@@ -54,6 +54,7 @@ def setup_resources(api):
         'Plugins': 'plugins',
         'PluginsId': 'plugins/<string:plugin_id>',
         'PluginsArchive': 'plugins/<string:plugin_id>/archive',
+        'DeploymentUpdate': 'deployment-update<string:update_id>',
         'DeploymentUpdates': 'deployment-updates',
         'DeploymentUpdateSteps':
             'deployment-updates/<string:update_id>/step',

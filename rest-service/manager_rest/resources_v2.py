@@ -673,6 +673,15 @@ class DeploymentUpdates(SecuredResource):
         return update, 201
 
 
+class DeploymentUpdate(SecuredResource):
+    @exceptions_handled
+    @marshal_with(responses_v2.DeploymentUpdate)
+    def post(self, update_id):
+        manager = get_deployment_updates_manager()
+        # TODO: Avias method should be somewhere around here
+        return
+
+
 class DeploymentUpdateCommit(SecuredResource):
     @exceptions_handled
     @marshal_with(responses_v2.DeploymentUpdate)
