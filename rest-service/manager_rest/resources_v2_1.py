@@ -39,6 +39,7 @@ from manager_rest.constants import (MAINTENANCE_MODE_ACTIVE,
                                     NOT_IN_MAINTENANCE_MODE)
 
 from dsl_parser.parser import parse_from_path
+from dsl_parser.tasks import prepare_deployment_plan
 from manager_rest import utils
 from deployment_update.manager import get_deployment_updates_manager
 from manager_rest.resources_v2 import create_filters, paginate, sortable
@@ -202,6 +203,7 @@ class DeploymentUpdates(SecuredResource):
             temp_app_path = os.path.join(temp_dir, relative_app_dir,
                                          blueprint_filename)
             blueprint = parse_from_path(temp_app_path)
+            prepare_deployment_plan(blueprint)
 
             # create a staging object
             update = get_deployment_updates_manager(). \
