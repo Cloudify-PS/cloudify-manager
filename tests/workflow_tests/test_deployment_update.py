@@ -782,8 +782,27 @@ class TestDeploymentUpdate(TestCase):
         self.assertEquals('terminated', execution['status'],
                           execution.error)
 
-        affected_node = self.client.deployments.get(dep_update.deployment_id)
-        print affected_node
+        self.client.executions.start(dep_update.deployment_id,
+                                     workflow_id='my_custom_workflow',
+                                     parameters={
+                                         'node_id': 'site1',
+                                         'delta': 2
+                                     })
+
+        executions = \
+            self.client.executions.list(deployment_id=deployment.id,
+                                        workflow_id='my_custom_workflow')
+        execution = self._wait_for_execution(executions[0])
+        self.assertEquals('terminated', execution['status'],
+                          execution.error)
+
+        affected_node = \
+            self.client.node_instances.list(dep_update.deployment_id,
+                                            'site1')
+        self.assertEqual(len(affected_node), 3)
+        deployment = self.client.deployments.get(dep_update.deployment_id)
+        self.assertIn('my_custom_workflow',
+                      [w['name'] for w in deployment.workflows])
 
     def test_remove_workflow(self):
         deployment, modified_bp_path = \
@@ -807,8 +826,50 @@ class TestDeploymentUpdate(TestCase):
         self.assertEquals('terminated', execution['status'],
                           execution.error)
 
-        affected_node = self.client.deployments.get(dep_update.deployment_id)
-        print affected_node
+        deployment = self.client.deployments.get(dep_update.deployment_id)
+        self.assertNotIn('my_custom_workflow',
+                         [w['name'] for w in deployment.workflows])
+
+    def test_modify_workflow(self):
+        deployment, modified_bp_path = \
+            self._deploy_and_get_modified_bp_path('add_workflow')
+        dep_update = \
+            self.client.deployment_updates.stage(deployment.id,
+                                                 modified_bp_path)
+
+        self.client.deployment_updates.modify(
+                dep_update.id,
+                entity_type='workflow',
+                entity_id='workflows:my_custom_workflow')
+
+        self.client.deployment_updates.commit(dep_update.id)
+
+        # assert that 'update' workflow was executed
+        executions = \
+            self.client.executions.list(deployment_id=deployment.id,
+                                        workflow_id='update')
+        execution = self._wait_for_execution(executions[0])
+        self.assertEquals('terminated', execution['status'],
+                          execution.error)
+
+        self.client.executions.start(dep_update.deployment_id,
+                                     workflow_id='my_custom_workflow',
+                                     parameters={'node_id': 'site1'})
+
+        executions = \
+            self.client.executions.list(deployment_id=deployment.id,
+                                        workflow_id='my_custom_workflow')
+        execution = self._wait_for_execution(executions[0])
+        self.assertEquals('terminated', execution['status'],
+                          execution.error)
+
+        affected_node = \
+            self.client.node_instances.list(dep_update.deployment_id,
+                                            'site1')
+        self.assertEqual(len(affected_node), 6)
+        deployment = self.client.deployments.get(dep_update.deployment_id)
+        self.assertIn('my_custom_workflow',
+                      [w['name'] for w in deployment.workflows])
 
     def test_add_relationship_operation(self):
         deployment, modified_bp_path = \

@@ -706,10 +706,9 @@ class DeploymentUpdateDeploymentHandler(UpdateHandler):
         return entity_id, updated_node.to_dict()
 
     def _modify_workflow(self, dep_update, entity_id):
+        # TODO: use the new utils to write it down
         pass
 
     def finalize(self, dep_update):
-        modified_deployment = dep_update.deployment_update_deployment
-        self.sm.delete_deployment(dep_update.deployment_id)
-        deployment = manager_rest.models.Deployment(**modified_deployment)
-        self.sm.put_deployment(deployment)
+        self.sm.update_deployment(dep_update.deployment_id,
+                                  dep_update.deployment_update_deployment)
