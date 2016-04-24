@@ -30,6 +30,8 @@ build do
              "install", "--build=#{project_dir}/dsl-parser", "https://github.com/cloudify-cosmo/cloudify-dsl-parser/archive/#{default_version}.zip"]
     command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}/rest-client", "https://github.com/cloudify-cosmo/cloudify-rest-client/archive/#{default_version}.zip"]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}/flask-securest", "https://github.com/cloudify-cosmo/flask-securest/archive/0.8.zip"]
 
     command ["#{install_dir}/embedded/bin/pip",
          "install", "--build=#{project_dir}",
