@@ -19,7 +19,6 @@ name "restservice"
 
 ENV['CORE_TAG_NAME'] || raise('CORE_TAG_NAME environment variable not set')
 default_version ENV['CORE_TAG_NAME']
-default_version "CFY-5210-move-restservice-packaging-to-omnibus"
 
 dependency "python"
 dependency "pip"
