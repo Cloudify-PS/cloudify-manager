@@ -33,7 +33,7 @@ build do
              "install", "--build=#{project_dir}/rest-client", "https://github.com/cloudify-cosmo/cloudify-rest-client/archive/#{default_version}.zip"]
 
     command ["#{install_dir}/embedded/bin/pip",
-         "install", "-I", "--build=#{project_dir}",
+         "install", "--build=#{project_dir}",
          "./rest-service",
          "-r", "./rest-service/dev-requirements.txt"]
 end
