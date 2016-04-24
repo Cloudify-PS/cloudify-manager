@@ -8,7 +8,7 @@ name "rest-service"
 maintainer "Gigaspaces"
 homepage "http://getcloudify.org/"
 
-override :cacerts, version: '2015.10.28', source: { md5: '06629db7f712ff3a75630eccaecc1fe4' }
+override :cacerts, version: '2015.10.28', source: { md5: '782dcde8f5d53b1b9e888fdf113c42b9' }
 override :pip, version: '7.1.2', source: { md5: '3823d2343d9f3aaab21cf9c917710196' }
 override :setuptools, version: '18.5', source: { md5: '533c868f01169a3085177dffe5e768bb' }
 
