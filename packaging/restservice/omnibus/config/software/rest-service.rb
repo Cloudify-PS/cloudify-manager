@@ -29,5 +29,5 @@ build do
     command ["#{install_dir}/embedded/bin/pip",
          "install", "-I", "--build=#{project_dir}",
          "./rest-service",
-         "-r", "./rest-servicedev-requirements.txt"]
+         "-r", "./rest-service/dev-requirements.txt"]
 end
