@@ -16,7 +16,9 @@ override :setuptools, version: '18.5', source: { md5: '533c868f01169a3085177dffe
 install_dir "#{default_root}/#{name}"
 
 build_version Omnibus::BuildVersion.semver
-build_iteration 1
+
+ENV['BUILD'] || raise('BUILD environment variable not set')
+build_iteration ENV['BUILD']
 
 # Creates required build directories
 dependency "preparation"
