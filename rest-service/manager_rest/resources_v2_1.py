@@ -25,59 +25,56 @@ from flask.ext.restful_swagger import swagger
 
 from flask_securest.rest_security import SecuredResource
 from flask_securest import rest_security
-from manager_rest import utils
 from flask import request
-
-from manager_rest.resources import (marshal_with,
-                                    exceptions_handled,
-                                    verify_json_content_type,
-                                    CONVENTION_APPLICATION_BLUEPRINT_FILE)
 
 from manager_rest import models
 from manager_rest import responses_v2_1
 from manager_rest import config
-from manager_rest.blueprints_manager import get_blueprints_manager
-from manager_rest.constants import (MAINTENANCE_MODE_ACTIVE,
-                                    MAINTENANCE_MODE_STATUS_FILE,
-                                    ACTIVATING_MAINTENANCE_MODE,
-                                    NOT_IN_MAINTENANCE_MODE)
-
-from dsl_parser.parser import parse_from_path
 from manager_rest import utils
-from deployment_update.manager import get_deployment_updates_manager
-from manager_rest.resources_v2 import create_filters, paginate, sortable
 from manager_rest.utils import create_filter_params_list_description
+from manager_rest.resources_v2 import create_filters, paginate, sortable
+from manager_rest.maintenance import (get_maintenance_file_path,
+                                      prepare_maintenance_dict,
+                                      get_running_executions)
+from manager_rest.manager_exceptions import BadParametersError
+from manager_rest.constants import (MAINTENANCE_MODE_ACTIVATED,
+                                    MAINTENANCE_MODE_ACTIVATING,
+                                    MAINTENANCE_MODE_DEACTIVATED)
+from manager_rest.resources import (marshal_with,
+                                    exceptions_handled,
+                                    verify_json_content_type,
+                                    CONVENTION_APPLICATION_BLUEPRINT_FILE)
+from dsl_parser.parser import parse_from_path
+from deployment_update.manager import get_deployment_updates_manager
 
 
 class MaintenanceMode(SecuredResource):
     @exceptions_handled
     @marshal_with(responses_v2_1.MaintenanceMode)
-    def get(self, **kwargs):
-        maintenance_file_path = _get_maintenance_file_path()
+    def get(self, **_):
+        maintenance_file_path = get_maintenance_file_path()
         if os.path.isfile(maintenance_file_path):
             state = utils.read_json_file(maintenance_file_path)
 
-            if state['status'] == MAINTENANCE_MODE_ACTIVE:
+            if state['status'] == MAINTENANCE_MODE_ACTIVATED:
                 return state
-            if state['status'] == ACTIVATING_MAINTENANCE_MODE:
-                running_executions = utils.get_running_executions()
-                if running_executions:
-                    state['remaining_executions'] = running_executions
-                    return state
+            if state['status'] == MAINTENANCE_MODE_ACTIVATING:
+                running_executions = get_running_executions()
 
-                # No 'else' clause since this will never happen. If there are
-                # no running executions, maintenance mode would have
-                # been activated at the maintenance handler hook (server.py)
-
+                # If there are no running executions,
+                # maintenance mode would have been activated at the
+                # maintenance handler hook (server.py)
+                state['remaining_executions'] = running_executions
+                return state
         else:
-            return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE)
+            return prepare_maintenance_dict(MAINTENANCE_MODE_DEACTIVATED)
 
 
 class MaintenanceModeAction(SecuredResource):
     @exceptions_handled
     @marshal_with(responses_v2_1.MaintenanceMode)
-    def post(self, maintenance_action, **kwargs):
-        maintenance_file_path = _get_maintenance_file_path()
+    def post(self, maintenance_action, **_):
+        maintenance_file_path = get_maintenance_file_path()
 
         if maintenance_action == 'activate':
             if os.path.isfile(maintenance_file_path):
@@ -85,13 +82,16 @@ class MaintenanceModeAction(SecuredResource):
                 return state, 304
 
             now = str(datetime.now())
-            user = ''
-            if rest_security._is_secured_request_context():
+
+            try:
                 user = rest_security.get_username()
-            remaining_executions = utils.get_running_executions()
+            except AttributeError:
+                user = ''
+
+            remaining_executions = get_running_executions()
             utils.mkdirs(config.instance().maintenance_folder)
-            new_state = _prepare_maintenance_dict(
-                    status=ACTIVATING_MAINTENANCE_MODE,
+            new_state = prepare_maintenance_dict(
+                    status=MAINTENANCE_MODE_ACTIVATING,
                     activation_requested_at=now,
                     remaining_executions=remaining_executions,
                     requested_by=user)
@@ -101,9 +101,15 @@ class MaintenanceModeAction(SecuredResource):
 
         if maintenance_action == 'deactivate':
             if not os.path.isfile(maintenance_file_path):
-                return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE), 304
+                return prepare_maintenance_dict(
+                        MAINTENANCE_MODE_DEACTIVATED), 304
             os.remove(maintenance_file_path)
-            return _prepare_maintenance_dict(NOT_IN_MAINTENANCE_MODE)
+            return prepare_maintenance_dict(MAINTENANCE_MODE_DEACTIVATED)
+
+        valid_actions = ['activate', 'deactivate']
+        raise BadParametersError(
+                'Invalid action: {0}, Valid action '
+                'values are: {1}'.format(maintenance_action, valid_actions))
 
 
 class DeploymentUpdateSteps(SecuredResource):
@@ -240,15 +246,3 @@ class DeploymentUpdateFinalizeCommit(SecuredResource):
     def post(self, update_id):
         manager = get_deployment_updates_manager()
         return manager.finalize_commit(update_id)
-
-
-def get_maintenance_file_path():
-    return os.path.join(
-        config.instance().maintenance_folder,
-        MAINTENANCE_MODE_STATUS_FILE)
-
-
-def write_maintenance_state(state):
-    maintenance_file_path = get_maintenance_file_path()
-    with open(maintenance_file_path, 'w') as f:
-        f.write(state)

@@ -12,6 +12,7 @@
 #  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  * See the License for the specific language governing permissions and
 #  * limitations under the License.
+
 import os
 import mock
 from nose.plugins.attrib import attr
@@ -23,9 +24,9 @@ from manager_rest import (storage_manager,
                           models,
                           utils)
 from manager_rest.constants import (
-    MAINTENANCE_MODE_ACTIVE,
-    ACTIVATING_MAINTENANCE_MODE,
-    NOT_IN_MAINTENANCE_MODE,
+    MAINTENANCE_MODE_ACTIVATED,
+    MAINTENANCE_MODE_ACTIVATING,
+    MAINTENANCE_MODE_DEACTIVATED,
     MAINTENANCE_MODE_STATUS_FILE)
 
 
@@ -34,23 +35,23 @@ class MaintenanceModeTest(BaseServerTestCase):
 
     def test_maintenance_mode_inactive(self):
         response = self.client.maintenance_mode.status()
-        self.assertEqual(NOT_IN_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_DEACTIVATED, response.status)
         self.assertFalse(response.activation_requested_at)
         self.client.blueprints.list()
 
     def test_maintenance_activation(self):
         response = self.client.maintenance_mode.activate()
-        self.assertEqual(ACTIVATING_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATING, response.status)
         response = self.client.maintenance_mode.status()
-        self.assertEqual(MAINTENANCE_MODE_ACTIVE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATED, response.status)
 
         # Second invocation of status goes through a different route.
         response = self.client.maintenance_mode.status()
-        self.assertEqual(MAINTENANCE_MODE_ACTIVE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATED, response.status)
 
     def test_any_cmd_activates_maintenance_mode(self):
         response = self.client.maintenance_mode.activate()
-        self.assertEqual(ACTIVATING_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATING, response.status)
         self.assertRaises(exceptions.MaintenanceModeActiveError,
                           self.client.blueprints.upload,
                           blueprint_path=self.get_mock_blueprint_path(),
@@ -59,13 +60,13 @@ class MaintenanceModeTest(BaseServerTestCase):
         self.client.maintenance_mode.deactivate()
 
         response = self.client.maintenance_mode.activate()
-        self.assertEqual(ACTIVATING_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATING, response.status)
         self.client.manager.get_version()
 
         maintenance_file = os.path.join(self.maintenance_mode_dir,
                                         MAINTENANCE_MODE_STATUS_FILE)
         state = utils.read_json_file(maintenance_file)
-        self.assertEqual(state['status'], MAINTENANCE_MODE_ACTIVE)
+        self.assertEqual(state['status'], MAINTENANCE_MODE_ACTIVATED)
 
     def test_request_denial_in_maintenance_mode(self):
         self._activate_maintenance_mode()
@@ -79,26 +80,20 @@ class MaintenanceModeTest(BaseServerTestCase):
         self.client.manager.get_version()
         self.client.manager.get_status()
 
-    def test_internal_request_approval_in_maintenance_mode(self):
-        self._activate_maintenance_mode()
-
-        with mock.patch('manager_rest.utils.is_internal_request'):
-            with mock.patch('manager_rest.utils.is_bypass_maintenance_mode'):
-                self.client.blueprints.list()
-
     def test_internal_request_denial_in_maintenance_mode(self):
         self._activate_maintenance_mode()
 
-        with mock.patch('manager_rest.utils.is_internal_request'):
+        with mock.patch('manager_rest.maintenance.is_internal_request'):
             self.assertRaises(exceptions.MaintenanceModeActiveError,
                               self.client.blueprints.list)
 
     def test_external_request_denial_in_maintenance_mode(self):
         self._activate_maintenance_mode()
 
-        with mock.patch('manager_rest.utils.is_bypass_maintenance_mode'):
-            self.assertRaises(exceptions.MaintenanceModeActiveError,
-                              self.client.blueprints.list)
+        bypass_maintenance_client = self.create_client(
+                headers={'X_BYPASS_MAINTENANCE': 'yes'})
+        with mock.patch('manager_rest.maintenance.is_internal_request'):
+            bypass_maintenance_client.blueprints.list()
 
     def test_multiple_maintenance_mode_activations(self):
         self._activate_maintenance_mode()
@@ -108,13 +103,15 @@ class MaintenanceModeTest(BaseServerTestCase):
                       'since maintenance mode is already started.')
         except exceptions.NotModifiedError as e:
             self.assertEqual(304, e.status_code)
-        self.assertTrue('already activated' in e.message)
+        self.assertIn('already activated', e.message)
 
     def test_transition_to_active(self):
         execution = self._start_maintenance_transition_mode()
+        response = self.client.maintenance_mode.status()
+        self.assertEqual(response.status, MAINTENANCE_MODE_ACTIVATING)
         self._terminate_execution(execution.id)
         response = self.client.maintenance_mode.status()
-        self.assertEqual(response.status, MAINTENANCE_MODE_ACTIVE)
+        self.assertEqual(response.status, MAINTENANCE_MODE_ACTIVATED)
 
     def test_deployment_denial_in_maintenance_transition_mode(self):
         self._start_maintenance_transition_mode()
@@ -178,50 +175,44 @@ class MaintenanceModeTest(BaseServerTestCase):
         self.assertIsNone(response.remaining_executions)
 
     def test_execution_amount_maintenance_activating(self):
-        execution_info = self._start_maintenance_transition_mode()
+        execution = self._start_maintenance_transition_mode()
         response = self.client.maintenance_mode.status()
         self.assertEqual(1, len(response.remaining_executions))
-        self.assertEqual(execution_info.id,
+        self.assertEqual(execution.id,
                          response.remaining_executions[0]['id'])
-        self.assertEqual(execution_info.deployment_id,
+        self.assertEqual(execution.deployment_id,
                          response.remaining_executions[0]['deployment_id'])
-        self.assertEqual(execution_info.workflow_id,
+        self.assertEqual(execution.workflow_id,
                          response.remaining_executions[0]['workflow_id'])
+        self.assertEqual(models.Execution.STARTED,
+                         response.remaining_executions[0]['status'])
+
+    def test_no_user_in_unsecured_maintenance_activation(self):
+        self._activate_maintenance_mode()
+        response = self.client.maintenance_mode.status()
+        self.assertFalse(response.requested_by)
 
     def test_trigger_time_maintenance_activated(self):
         self._activate_maintenance_mode()
         response = self.client.maintenance_mode.status()
-        self.assertTrue(len(response.activated_at) > 0)
+        self.assertIsNotNone(response.activated_at)
 
     def test_trigger_time_maintenance_deactivated(self):
         self._activate_and_deactivate_maintenance_mode()
         response = self.client.maintenance_mode.status()
-        self.assertTrue(len(response.activated_at) == 0)
+        self.assertFalse(response.activated_at)
 
     def test_trigger_time_maintenance_activating(self):
         self._start_maintenance_transition_mode()
         response = self.client.maintenance_mode.status()
-        self.assertTrue(len(response.activation_requested_at) > 0)
-
-    def test_requested_by_secured(self):
-        with mock.patch('manager_rest.resources_v2_1.'
-                        '_prepare_maintenance_dict',
-                        new=self.mock_prepare_maintenance_dict):
-            self._activate_maintenance_mode()
-            response = self.client.maintenance_mode.status()
-            self.assertEqual(response.requested_by, 'mock user')
-
-    def test_requested_by_non_secured(self):
-        self._activate_maintenance_mode()
-        response = self.client.maintenance_mode.status()
-        self.assertTrue(len(response.requested_by) == 0)
+        self.assertIsNotNone(response.activation_requested_at)
 
     def test_deactivate_maintenance_mode(self):
         self._activate_maintenance_mode()
         response = self.client.maintenance_mode.deactivate()
-        self.assertEqual(NOT_IN_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_DEACTIVATED, response.status)
         response = self.client.maintenance_mode.status()
-        self.assertEqual(NOT_IN_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_DEACTIVATED, response.status)
 
     def test_request_approval_after_maintenance_mode_deactivation(self):
         self._activate_and_deactivate_maintenance_mode()
@@ -240,34 +231,12 @@ class MaintenanceModeTest(BaseServerTestCase):
             self.assertEqual(304, e.status_code)
         self.assertTrue('already deactivated' in e.message)
 
-    def test_maintenance_file(self):
-        maintenance_file = os.path.join(self.maintenance_mode_dir,
-                                        MAINTENANCE_MODE_STATUS_FILE)
-
-        self.assertFalse(os.path.isfile(maintenance_file))
-        state = {'status': ACTIVATING_MAINTENANCE_MODE,
-                 'activated_at': 'test 444'}
-
-        utils.write_dict_to_json_file(maintenance_file, state)
-        current_state = utils.read_json_file(maintenance_file)
-        self.assertEqual(ACTIVATING_MAINTENANCE_MODE, current_state['status'])
-        self.assertEqual('test 444', current_state['activated_at'])
-
-        lst = ['1', 'b']
-        state['status'] = MAINTENANCE_MODE_ACTIVE
-        state['executions'] = lst
-        utils.write_dict_to_json_file(maintenance_file, state)
-        current_state = utils.read_json_file(maintenance_file)
-        self.assertEqual(MAINTENANCE_MODE_ACTIVE, current_state['status'])
-        self.assertEqual('test 444', current_state['activated_at'])
-        self.assertEqual(lst, current_state['executions'])
-
-    def test_maintenance_mode_active_error_raised(self):
+    def test_maintenance_mode_activated_error_raised(self):
         self._activate_maintenance_mode()
         self.assertRaises(exceptions.MaintenanceModeActiveError,
                           self.client.blueprints.list)
 
-    def test_maintenance_mode_activating_error_raised(self):
+    def test_running_execution_maintenance_activating_error_raised(self):
         self.client.blueprints.upload(
                 self.get_mock_blueprint_path(),
                 blueprint_id='b1')
@@ -277,22 +246,58 @@ class MaintenanceModeTest(BaseServerTestCase):
                           blueprint_id='b1',
                           deployment_id='d1')
 
+    def test_pending_execution_maintenance_activating_error_raised(self):
+        self.client.blueprints.upload(
+                self.get_mock_blueprint_path(),
+                blueprint_id='b1')
+        self._start_maintenance_transition_mode(
+                execution_status=models.Execution.PENDING)
+        self.assertRaises(exceptions.MaintenanceModeActivatingError,
+                          self.client.deployments.create,
+                          blueprint_id='b1',
+                          deployment_id='d1')
+
+    def test_cancelling_execution_maintenance_activating_error_raised(self):
+        self.client.blueprints.upload(
+                self.get_mock_blueprint_path(),
+                blueprint_id='b1')
+        self._start_maintenance_transition_mode(
+            execution_status=models.Execution.CANCELLING)
+        self.assertRaises(exceptions.MaintenanceModeActivatingError,
+                          self.client.deployments.create,
+                          blueprint_id='b1',
+                          deployment_id='d1')
+
+    def test_force_cancelling_execution_maintenance_activating_error_raised(
+            self):
+        self.client.blueprints.upload(
+                self.get_mock_blueprint_path(),
+                blueprint_id='b1')
+        self._start_maintenance_transition_mode(
+                execution_status=models.Execution.FORCE_CANCELLING)
+        self.assertRaises(exceptions.MaintenanceModeActivatingError,
+                          self.client.deployments.create,
+                          blueprint_id='b1',
+                          deployment_id='d1')
+
     def _activate_maintenance_mode(self):
         self.client.maintenance_mode.activate()
         self.client.maintenance_mode.status()
 
-    def _start_maintenance_transition_mode(self):
+    def _start_maintenance_transition_mode(
+            self,
+            execution_status=models.Execution.STARTED):
         (blueprint_id, deployment_id, blueprint_response,
          deployment_response) = self.put_deployment('transition')
         execution = self.client.executions.start(deployment_id, 'install')
         execution = self.client.executions.get(execution.id)
         self.assertEquals('terminated', execution.status)
         storage_manager._get_instance().update_execution_status(
-                execution.id, models.Execution.STARTED, error='')
+                execution.id, execution_status, error='')
 
         self.client.maintenance_mode.activate()
         response = self.client.maintenance_mode.status()
-        self.assertEqual(ACTIVATING_MAINTENANCE_MODE, response.status)
+        self.assertEqual(MAINTENANCE_MODE_ACTIVATING, response.status)
 
         return execution
 
@@ -303,16 +308,3 @@ class MaintenanceModeTest(BaseServerTestCase):
     def _activate_and_deactivate_maintenance_mode(self):
         self._activate_maintenance_mode()
         self.client.maintenance_mode.deactivate()
-
-    def mock_prepare_maintenance_dict(self,
-                                      status,
-                                      activated_at='',
-                                      activation_requested_at='',
-                                      remaining_executions=None,
-                                      **_):
-        state = {'status': status,
-                 'activated_at': activated_at,
-                 'activation_requested_at': activation_requested_at,
-                 'remaining_executions': remaining_executions,
-                 'requested_by': 'mock user'}
-        return state

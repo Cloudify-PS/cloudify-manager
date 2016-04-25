@@ -14,8 +14,8 @@
 #  * limitations under the License.
 
 MAINTENANCE_MODE_STATUS_FILE = 'status.json'
-ACTIVATING_MAINTENANCE_MODE = 'activating'
-MAINTENANCE_MODE_ACTIVE = 'activated'
-NOT_IN_MAINTENANCE_MODE = 'deactivated'
+MAINTENANCE_MODE_ACTIVATING = 'activating'
+MAINTENANCE_MODE_ACTIVATED = 'activated'
+MAINTENANCE_MODE_DEACTIVATED = 'deactivated'
 MAINTENANCE_MODE_ACTIVE_ERROR_CODE = 'maintenance_mode_active'
-ACTIVATING_MAINTENANCE_MODE_ERROR_CODE = 'entering_maintenance_mode'
+MAINTENANCE_MODE_ACTIVATING_ERROR_CODE = 'entering_maintenance_mode'
