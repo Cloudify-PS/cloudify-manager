@@ -19,7 +19,7 @@ name "restservice"
 
 ENV['CORE_TAG_NAME'] || raise('CORE_TAG_NAME environment variable not set')
 default_version ENV['CORE_TAG_NAME']
-
+script_plugin_tag = '1.4'
 dependency "python"
 dependency "pip"
 
@@ -27,13 +27,21 @@ source git: "https://github.com/cloudify-cosmo/cloudify-manager"
 
 build do
     command ["#{install_dir}/embedded/bin/pip",
-             "install", "--build=#{project_dir}/flask-securest", "https://github.com/cloudify-cosmo/flask-securest/archive/0.8.zip"]
-    command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}/dsl-parser", "https://github.com/cloudify-cosmo/cloudify-dsl-parser/archive/#{default_version}.zip"]
     command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}/rest-client", "https://github.com/cloudify-cosmo/cloudify-rest-client/archive/#{default_version}.zip"]
-
     command ["#{install_dir}/embedded/bin/pip",
-         "install", "--build=#{project_dir}",
-         "-r", "./rest-service/dev-requirements.txt"]
+             "install", "--build=#{project_dir}/flask-securest", "https://github.com/cloudify-cosmo/flask-securest/archive/0.8.zip"]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}/plugins-common", "https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/#{default_version}.zip"]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}/script-plugin", "https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/#{script_plugin_tag}.zip"]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}/agent", "https://github.com/cloudify-cosmo/cloudify-agent/archive/#{default_version}.zip"]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}", "."]
+    command ["#{install_dir}/embedded/bin/pip",
+             "install", "--build=#{project_dir}",
+             "-r", "./rest-service/dev-requirements.txt"]
 end
+
