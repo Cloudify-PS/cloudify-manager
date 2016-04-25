@@ -37,7 +37,7 @@ cd packaging/restservice/omnibus
 git tag -d $CORE_TAG_NAME
 NEW_TAG_NAME="${VERSION}.${PRERELEASE}"
 git tag $NEW_TAG_NAME
-omnibus build cloudify && result="success"
+omnibus build rest-service && result="success"
 cd pkg
 cat *.json || exit 1
 rm -f version-manifest.json
