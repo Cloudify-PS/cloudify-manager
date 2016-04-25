@@ -39,7 +39,7 @@ build do
     command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}/agent", "https://github.com/cloudify-cosmo/cloudify-agent/archive/#{default_version}.zip"]
     command ["#{install_dir}/embedded/bin/pip",
-             "install", "--build=#{project_dir}", "."]
+             "install", "--build=#{project_dir}", "./rest-service/"]
     command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}",
              "-r", "./rest-service/dev-requirements.txt"]
