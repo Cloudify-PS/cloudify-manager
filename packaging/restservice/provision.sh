@@ -31,8 +31,9 @@ PACKAGER_BRANCH=$4
 
 rm -rf cloudify-manager
 git clone https://github.com/cloudify-cosmo/cloudify-manager.git
-cd cloudify-manager/packaging/restservice/omnibus
+cd cloudify-manager
 git checkout ${MANAGER_BRANCH-$CORE_TAG_NAME}
+cd packaging/restservice/omnibus
 git tag -d $CORE_TAG_NAME
 NEW_TAG_NAME="${VERSION}.${PRERELEASE}"
 git tag $NEW_TAG_NAME
@@ -41,5 +42,5 @@ cd pkg
 cat *.json || exit 1
 rm -f version-manifest.json
 
-#[ "$result" == "success" ] && create_md5 "rpm" &&
-#[ -z ${AWS_ACCESS_KEY} ] || upload_to_s3 "rpm" && upload_to_s3 "md5"
+[ "$result" == "success" ] && create_md5 "rpm" &&
+[ -z ${AWS_ACCESS_KEY} ] || upload_to_s3 "rpm" && upload_to_s3 "md5"
