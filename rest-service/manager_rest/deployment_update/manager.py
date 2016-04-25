@@ -180,11 +180,16 @@ class DeploymentUpdateManager(object):
             [instance.to_dict() for instance in
              self.sm.get_node_instances(filters=deployment_id_filter).items]
 
+        scaling_groups = self.sm.get_deployment(
+            dep_update.deployment_id,
+            include=['scaling_groups']).scaling_groups
+
         # project changes in deployment
         return tasks.modify_deployment(
                 nodes=raw_nodes,
                 previous_node_instances=raw_node_instances,
-                modified_nodes=()
+                modified_nodes=(),
+                scaling_groups=scaling_groups
         )
 
     def _execute_update_workflow(self,
