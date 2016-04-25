@@ -41,7 +41,7 @@ build do
     command ["#{install_dir}/embedded/bin/pip",
              "install", "--build=#{project_dir}", "./rest-service/"]
     command ["#{install_dir}/embedded/bin/pip",
-             "install", "--build=#{project_dir}",
+             "install", "--build=#{project_dir}/dev-requirements",
              "-r", "./rest-service/dev-requirements.txt"]
 end
 
